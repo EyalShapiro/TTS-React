@@ -2,17 +2,42 @@ import React, { useState, useEffect, useRef } from "react";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
+import { Card } from "primereact/card";
+import { FloatLabel } from "primereact/floatlabel";
 
 const TextToSpeech: React.FC = () => {
 	const [text, setText] = useState<string>("");
 	const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 	const [highlightedText, setHighlightedText] = useState<string>("");
+	const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+	const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 	const toast = useRef<Toast>(null);
 	const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+	// Load available voices
+	useEffect(() => {
+		const loadVoices = () => {
+			const availableVoices = window.speechSynthesis.getVoices();
+			setVoices(availableVoices);
+		};
+		loadVoices();
+		window.speechSynthesis.onvoiceschanged = loadVoices;
+	}, []);
 
 	// Handle text input
 	const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setText(e.target.value);
+	};
+
+	// Automatically select voice language based on text content
+	const selectVoice = (text: string): SpeechSynthesisVoice | null => {
+		for (let voice of voices) {
+			if (voice.lang.startsWith(text.substring(0, 2).toLowerCase())) {
+				return voice;
+			}
+		}
+		return voices[0] || null; // Default to first available voice if no match found
 	};
 
 	// Start speech synthesis with word highlighting
@@ -28,9 +53,14 @@ const TextToSpeech: React.FC = () => {
 		}
 
 		if ("speechSynthesis" in window) {
+			window.speechSynthesis.cancel(); // Cancel any ongoing speech
+
 			const utterance = new SpeechSynthesisUtterance(text);
 			utteranceRef.current = utterance;
 			setIsSpeaking(true);
+
+			const selectedVoice = selectVoice(text);
+			if (selectedVoice) utterance.voice = selectedVoice;
 
 			let wordIndex = 0;
 			const words = text.split(" ");
@@ -52,6 +82,11 @@ const TextToSpeech: React.FC = () => {
 					detail: "The speech has ended. Enjoy the sunset!",
 					life: 3000,
 				});
+
+				// Stop recording if active (but not capturing audio in this case)
+				if (mediaRecorderRef.current) {
+					mediaRecorderRef.current.stop();
+				}
 			};
 
 			utterance.onerror = (error) => {
@@ -66,6 +101,7 @@ const TextToSpeech: React.FC = () => {
 				console.error("Speech synthesis error:", error);
 			};
 
+			// Simulate speaking and audio export
 			window.speechSynthesis.speak(utterance);
 		} else {
 			toast.current?.show({
@@ -87,11 +123,11 @@ const TextToSpeech: React.FC = () => {
 		}
 	};
 
-	// Export audio as a downloadable file (simulation)
+	// Export recorded audio as a downloadable file (placeholder)
 	const handleExport = () => {
-		// Simulating the download feature since SpeechSynthesis API does not provide direct audio export
-		const blob = new Blob([text], { type: "text/plain" });
-		const url = URL.createObjectURL(blob);
+		// This will only simulate the export
+		const textBlob = new Blob([text], { type: "text/plain" });
+		const url = URL.createObjectURL(textBlob);
 		const link = document.createElement("a");
 		link.href = url;
 		link.download = "speech_text.txt"; // Placeholder for audio file
@@ -116,42 +152,43 @@ const TextToSpeech: React.FC = () => {
 	));
 
 	return (
-		<Card>
-			<Toast ref={toast} />
-			<div className="p-field p-col-12">
-				<label htmlFor="text">Text to Speak</label>
-				<InputTextarea
-					id="text"
-					value={text}
-					onChange={handleTextChange}
-					rows={5}
-					cols={30}
-					autoResize
-					placeholder="Enter text here..."
-				/>
-			</div>
-			<div className="p-field p-col-12">
-				<Button
-					label={isSpeaking ? "Speaking..." : "Speak"}
-					icon="pi pi-volume-up"
-					onClick={handleSpeak}
-					disabled={isSpeaking}
-					className="p-button-primary"
-				/>
-				<Button
-					label="Stop"
-					icon="pi pi-stop"
-					onClick={handleStop}
-					disabled={!isSpeaking}
-					className="p-button-secondary ml-2"
-				/>
-				<Button label="Export" icon="pi pi-download" onClick={handleExport} className="p-button-success ml-2" />
-			</div>
-			<div className="p-field p-col-12">
+		<div>
+			<Card>
+				<Toast ref={toast} />
+				<FloatLabel>
+					<label htmlFor="text">Text to Speak</label>
+					<InputTextarea
+						id="text"
+						value={text}
+						onChange={handleTextChange}
+						rows={5}
+						cols={30}
+						autoResize
+						placeholder="Enter text here..."
+					/>
+				</FloatLabel>
+				<div className="p-field p-col-12">
+					<Button
+						label={isSpeaking ? "Speaking..." : "Speak"}
+						icon="pi pi-volume-up"
+						onClick={handleSpeak}
+						disabled={isSpeaking}
+					/>
+					<Button
+						label="Stop"
+						icon="pi pi-stop"
+						onClick={handleStop}
+						disabled={!isSpeaking}
+						className="p-button-secondary ml-2"
+					/>
+					<Button label="Export to Text" icon="pi pi-download" onClick={handleExport} />
+				</div>
+			</Card>
+			<Card>
 				<label>Preview with Highlighted Words</label>
 				<p>{highlightedDisplay}</p>
-			</div>
-		</Card>
+			</Card>
+		</div>
 	);
 };
 
