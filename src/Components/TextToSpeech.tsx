@@ -1,25 +1,33 @@
+// TextToSpeech.tsx
 import React, { useState, useEffect, useRef } from "react";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
-import { Toast } from "primereact/toast";
 import { Card } from "primereact/card";
 import { FloatLabel } from "primereact/floatlabel";
+import { Dropdown } from "primereact/dropdown";
+import { useToast } from "../context/ToastContext";
 
 const TextToSpeech: React.FC = () => {
 	const [text, setText] = useState<string>("");
 	const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 	const [highlightedText, setHighlightedText] = useState<string>("");
 	const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-	const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-	const toast = useRef<Toast>(null);
+	const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+	const [searchTerm, setSearchTerm] = useState<string>("");
+
+	const { showToast } = useToast(); // Use the useToast hook
 	const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
 	// Load available voices
 	useEffect(() => {
 		const loadVoices = () => {
 			const availableVoices = window.speechSynthesis.getVoices();
 			setVoices(availableVoices);
+
+			// Set default voice if available
+			if (availableVoices.length > 0) {
+				setSelectedVoice(availableVoices[0]); // Set first available voice as default
+			}
 		};
 		loadVoices();
 		window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -30,25 +38,10 @@ const TextToSpeech: React.FC = () => {
 		setText(e.target.value);
 	};
 
-	// Automatically select voice language based on text content
-	const selectVoice = (text: string): SpeechSynthesisVoice | null => {
-		for (let voice of voices) {
-			if (voice.lang.startsWith(text.substring(0, 2).toLowerCase())) {
-				return voice;
-			}
-		}
-		return voices[0] || null; // Default to first available voice if no match found
-	};
-
 	// Start speech synthesis with word highlighting
 	const handleSpeak = () => {
 		if (!text.trim()) {
-			toast.current?.show({
-				severity: "warn",
-				summary: "Empty Text",
-				detail: "Please enter text to speak.",
-				life: 3000,
-			});
+			showToast("warn", "Empty Text", "Please enter text to speak.");
 			return;
 		}
 
@@ -59,7 +52,6 @@ const TextToSpeech: React.FC = () => {
 			utteranceRef.current = utterance;
 			setIsSpeaking(true);
 
-			const selectedVoice = selectVoice(text);
 			if (selectedVoice) utterance.voice = selectedVoice;
 
 			let wordIndex = 0;
@@ -76,40 +68,19 @@ const TextToSpeech: React.FC = () => {
 			utterance.onend = () => {
 				setIsSpeaking(false);
 				setHighlightedText("");
-				toast.current?.show({
-					severity: "success",
-					summary: "Speech Finished",
-					detail: "The speech has ended. Enjoy the sunset!",
-					life: 3000,
-				});
-
-				// Stop recording if active (but not capturing audio in this case)
-				if (mediaRecorderRef.current) {
-					mediaRecorderRef.current.stop();
-				}
+				showToast("success", "Speech Finished", "The speech has ended. Enjoy the sunset!");
 			};
 
 			utterance.onerror = (error) => {
 				setIsSpeaking(false);
 				setHighlightedText("");
-				toast.current?.show({
-					severity: "error",
-					summary: "Error",
-					detail: "An error occurred during speech synthesis.",
-					life: 3000,
-				});
+				showToast("error", "Error", "An error occurred during speech synthesis.");
 				console.error("Speech synthesis error:", error);
 			};
 
-			// Simulate speaking and audio export
 			window.speechSynthesis.speak(utterance);
 		} else {
-			toast.current?.show({
-				severity: "error",
-				summary: "Unsupported",
-				detail: "Speech synthesis is not supported in this browser.",
-				life: 3000,
-			});
+			showToast("error", "Unsupported", "Speech synthesis is not supported in this browser.");
 		}
 	};
 
@@ -119,13 +90,12 @@ const TextToSpeech: React.FC = () => {
 			window.speechSynthesis.cancel();
 			setIsSpeaking(false);
 			setHighlightedText("");
-			toast.current?.show({ severity: "info", summary: "Stopped", detail: "Speech has been stopped.", life: 3000 });
+			showToast("info", "Stopped", "Speech has been stopped.");
 		}
 	};
 
 	// Export recorded audio as a downloadable file (placeholder)
 	const handleExport = () => {
-		// This will only simulate the export
 		const textBlob = new Blob([text], { type: "text/plain" });
 		const url = URL.createObjectURL(textBlob);
 		const link = document.createElement("a");
@@ -136,57 +106,81 @@ const TextToSpeech: React.FC = () => {
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
 
-		toast.current?.show({
-			severity: "success",
-			summary: "Exported",
-			detail: "Text has been exported as a placeholder file.",
-			life: 3000,
-		});
+		showToast("success", "Exported", "Text has been exported as a placeholder file.");
 	};
 
-	// Highlighted text with bold styling
-	const highlightedDisplay = text.split(" ").map((word, index) => (
-		<span key={index} style={{ fontWeight: word === highlightedText ? "bold" : "normal" }}>
-			{word}{" "}
-		</span>
-	));
+	// Filter voices based on search term
+	const filteredVoices = voices.filter((voice) => voice.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+	const isButtonDisabled = !text.trim() || isSpeaking; // Disable buttons if no text or if speaking
 
 	return (
 		<div>
-			<Card>
-				<Toast ref={toast} />
+			<Card style={{ width: "100%" }} title={"Text to Speak"} role="region">
 				<FloatLabel>
 					<label htmlFor="text">Text to Speak</label>
 					<InputTextarea
 						id="text"
+						style={{ width: "100%" }}
 						value={text}
 						onChange={handleTextChange}
 						rows={5}
-						cols={30}
 						autoResize
 						placeholder="Enter text here..."
 					/>
 				</FloatLabel>
-				<div className="p-field p-col-12">
+				<Dropdown
+					showClear
+					value={selectedVoice}
+					options={filteredVoices}
+					onChange={(e) => {
+						setSelectedVoice(e.value);
+					}}
+					optionLabel="name"
+					placeholder="Select a Voice"
+					editable
+					style={{ width: "100%" }}
+					panelStyle={{ background: "deepskyblue" }}
+					showOnFocus
+				/>
+				<>
 					<Button
 						label={isSpeaking ? "Speaking..." : "Speak"}
 						icon="pi pi-volume-up"
 						onClick={handleSpeak}
-						disabled={isSpeaking}
+						disabled={isButtonDisabled} // Disable if no text or speaking
 					/>
 					<Button
 						label="Stop"
 						icon="pi pi-stop"
 						onClick={handleStop}
-						disabled={!isSpeaking}
-						className="p-button-secondary ml-2"
+						disabled={!isSpeaking} // Only disable if not speaking
+						style={{ marginLeft: "0.5rem" }}
 					/>
-					<Button label="Export to Text" icon="pi pi-download" onClick={handleExport} />
-				</div>
+				</>
 			</Card>
-			<Card>
-				<label>Preview with Highlighted Words</label>
-				<p>{highlightedDisplay}</p>
+			<Card
+				title={<label>Preview with Highlighted Words</label>}
+				style={{ marginTop: 8 }}
+				footer={
+					<Button
+						label="Export to Text"
+						icon="pi pi-download"
+						onClick={handleExport}
+						disabled={!text.trim()} /* Disable if no text */
+					/>
+				}
+			>
+				<p
+					style={{
+						color: highlightedText ? "darkcyan" : "black",
+						fontWeight: highlightedText ? "bold" : "normal",
+					}}
+				>
+					{text.split(" ").map((word, index) => (
+						<span key={index}>{word} </span>
+					))}
+				</p>
 			</Card>
 		</div>
 	);
