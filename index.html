@@ -7,7 +7,36 @@
 		<title>TTS-REACT</title>
 	</head>
 	<body>
+		<script></script>
 		<div id="root"></div>
 		<script type="module" src="/src/main.tsx"></script>
+		<script>
+			function setCookie(name, value, days) {
+				let expires = "";
+				if (days) {
+					const date = new Date();
+					date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+					expires = "; expires=" + date.toUTCString();
+				}
+				document.cookie = name + "=" + (value || "") + expires + "; path=/";
+			}
+
+			function getCookie(name) {
+				const nameEQ = name + "=";
+				const ca = document.cookie.split(";");
+				for (let i = 0; i < ca.length; i++) {
+					const c = ca[i];
+					while (c.charAt(0) == " ") c = c.substring(1, c.length);
+					if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+				}
+				return null;
+			}
+			setCookie("user_preference", "dark_mode", 7); // Sets a cookie named "user_preference" with the value "dark_mode" that expires in 7 days.
+			const userPreference = getCookie("user_preference");
+			if (userPreference === "dark_mode") {
+				// Apply dark mode styles to the website
+				console.log(`%c dark_mode`, "color:blue");
+			} else console.log("not dark_mode ");
+		</script>
 	</body>
 </html>

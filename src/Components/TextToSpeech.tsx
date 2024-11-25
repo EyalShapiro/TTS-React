@@ -116,31 +116,27 @@ const TextToSpeech: React.FC = () => {
 
 	return (
 		<div>
-			<Card style={{ width: "100%" }} title={"Text to Speak"} role="region">
-				<FloatLabel>
-					<label htmlFor="text">Text to Speak</label>
-					<InputTextarea
-						id="text"
-						style={{ width: "100%" }}
-						value={text}
-						onChange={handleTextChange}
-						rows={5}
-						autoResize
-						placeholder="Enter text here..."
-					/>
-				</FloatLabel>
+			<Card style={{ width: "100%", background: "#555", color: "#ffff" }} title={"Text to Speak"} role="region">
+				<InputTextarea
+					spellCheck={true}
+					translate={"yes"}
+					style={{ width: "100%", color: "#555", background: "#ffff" }}
+					value={text}
+					onChange={handleTextChange}
+					rows={5}
+					autoResize
+					placeholder="Enter text here..."
+				/>
 				<Dropdown
 					showClear
 					value={selectedVoice}
 					options={filteredVoices}
-					onChange={(e) => {
-						setSelectedVoice(e.value);
-					}}
+					onChange={(e) => setSelectedVoice(e.value)}
 					optionLabel="name"
 					placeholder="Select a Voice"
 					editable
 					style={{ width: "100%" }}
-					panelStyle={{ background: "deepskyblue" }}
+					panelStyle={{ background: "" }}
 					showOnFocus
 				/>
 				<>
@@ -161,7 +157,7 @@ const TextToSpeech: React.FC = () => {
 			</Card>
 			<Card
 				title={<label>Preview with Highlighted Words</label>}
-				style={{ marginTop: 8 }}
+				style={{ marginTop: 8, background: "#555", color: "#ffff" }}
 				footer={
 					<Button
 						label="Export to Text"
@@ -171,16 +167,32 @@ const TextToSpeech: React.FC = () => {
 					/>
 				}
 			>
-				<p
-					style={{
-						color: highlightedText ? "darkcyan" : "black",
-						fontWeight: highlightedText ? "bold" : "normal",
-					}}
-				>
-					{text.split(" ").map((word, index) => (
-						<span key={index}>{word} </span>
-					))}
-				</p>
+				{text && text.trim().length > 0 && (
+					<p
+						style={{
+							lineHeight: "1.8",
+							fontSize: "1.1rem",
+							border: "1px solid blue",
+							borderRadius: "10px",
+							padding: "0.25rem 0.125rem",
+						}}
+					>
+						{text.split(" ").map((word, index) => (
+							<span
+								key={index}
+								style={{
+									color: word === highlightedText ? "darkcyan" : "#fff", // Highlighted words in darkcyan
+									fontWeight: word === highlightedText ? "bold" : "normal", // Bold for highlighted words
+									backgroundColor: word === highlightedText ? "lightyellow" : "transparent", // Add background color to highlighted words
+									padding: word === highlightedText ? "2px 4px" : undefined,
+									borderRadius: "4px",
+								}}
+							>
+								{word}
+							</span>
+						))}
+					</p>
+				)}
 			</Card>
 		</div>
 	);

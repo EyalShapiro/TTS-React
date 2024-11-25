@@ -1,7 +1,7 @@
 // ToastService.ts
 import { Toast } from "primereact/toast";
 import { RefObject } from "react";
-
+declare type severityType = "success" | "info" | "warn" | "error" | "secondary" | "contrast";
 class ToastService {
 	private toastRef: RefObject<Toast>;
 
@@ -9,7 +9,7 @@ class ToastService {
 		this.toastRef = toastRef;
 	}
 
-	show(severity: string, summary: string, detail: string, life: number = 3000) {
+	show(severity: severityType, summary: string, detail: string, life: number = 3000) {
 		this.toastRef.current?.show({ severity, summary, detail, life });
 	}
 
